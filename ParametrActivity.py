@@ -6,5 +6,5 @@ class ParametrActivity:
     accessibility: float
     type: str
     participants: int
-    price: int
+    price: float
 
