@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from difflib import SequenceMatcher
+from typing import List, Union
 from ParametrActivity import ParametrActivity
 import requests
 import json
@@ -25,27 +26,21 @@ def input_parametr(base_accessibility: float, base_type: str,\
     return ParametrActivity(accessibility, type, participants, price)
 
 
-def form_query(p: ParametrActivity) -> list:
+def form_query(p: ParametrActivity) -> tuple[str, str, str, str]:
     '''формируем параметры get-запроса'''
     return (f'participants={p.participants}', f'price={p.price}', \
             f'accessibility={p.accessibility}', f'type={p.type}')
 
 
-def get_similar(*args) -> list:
+def get_similar(*args) -> List[Union[float, dict]]:
     for a, b, c in args:
         return [SequenceMatcher(None, a, b, autojunk=True).ratio(), c]
 
 
-def show_result(r: list, max_row: int=10):
+def show_result(r: List[Union[float, dict]], max_row: int = 10) -> None:
     r = r[0:max_row]
     for num, i in enumerate(r):
         print(num+1, i[1]['activity'])
-
-
-def show_result_debug(r: list, max_row: int = 10):
-    r = r[0:max_row]
-    for num, i in enumerate(r):
-        print(num + 1, i[1]['activity'], '|debug= ', i)
 
 
 if __name__ == '__main__':
@@ -65,15 +60,20 @@ if __name__ == '__main__':
     with ThreadPoolExecutor() as executor:
         net_results = set(executor.map(get_activity, args))
     for r in net_results:
-        tmp = json.loads(r)
-        tmp_res.append(tmp)
+        tmp: dict = json.loads(r)
+        if tmp.get('error'):
+            continue
+        else:
+            tmp_res.append(tmp)
     # prepare args for model
     a = [p.price, p.type, p.accessibility, p.participants]
-    args = ((a, [tmp['price'], tmp['type'], tmp['accessibility'], tmp['participants']], \
-             tmp) \
-            for tmp in tmp_res)
+    for i in tmp_res:
+        print(i)
+
+    args = ((a, [tmp['price'], tmp['type'], tmp['accessibility'], tmp['participants']],  # type: ignore
+         tmp) for tmp in tmp_res)
     with ProcessPoolExecutor() as executer:
-        results = executer.map(get_similar, args)
+        results= executer.map(get_similar, args)
     del tmp_res
     r = sorted(results, key=lambda x: x[0], reverse=True)
     show_result(r)
