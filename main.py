@@ -1,30 +1,27 @@
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from difflib import SequenceMatcher
-
 from ParametrActivity import ParametrActivity
 import requests
 import json
+import yaml
 
 
-def get_activity(url: str, base_url: str = 'http://www.boredapi.com/api/activity/?') -> None:
+def get_activity(args) -> str:
     '''сетевой запрос'''
-    response = requests.get(base_url + url)
+    response = requests.get(args[1] + args[0])
     if response.status_code == 200:
         return response.content
     else:
         raise 'Cant find web-page'
 
 
-def input_parametr() -> ParametrActivity:
+def input_parametr(base_accessibility: float, base_type: str,\
+                   base_participants: int, base_price: float) -> ParametrActivity:
     '''Запрашиваем предпочтения пользователя'''
-    BASE_ACCESSIBILITY: float = 0.9
-    BASE_TYPE: str = 'education'
-    BASE_PARTICIPANTS: int = 1
-    BASE_PRICE: float = 0.0
-    accessibility: float = float(input("accessibility ") or BASE_ACCESSIBILITY)
-    type: str = input("type ") or BASE_TYPE
-    participants: int = int(input("participants ") or BASE_PARTICIPANTS)
-    price: int = int(input("price ") or BASE_PRICE)
+    accessibility: float = float(input("accessibility ") or base_accessibility)
+    type: str = input("type ") or base_type
+    participants: int = int(input("participants ") or base_participants)
+    price: float = float(input("price ") or base_price)
     return ParametrActivity(accessibility, type, participants, price)
 
 
@@ -51,14 +48,22 @@ def show_result_debug(r: list, max_row: int = 10):
         print(num + 1, i[1]['activity'], '|debug= ', i)
 
 
-
 if __name__ == '__main__':
-    n = 20
-    p = input_parametr()
+    with open("config.yaml", "r") as stream:
+        try:
+            data = (yaml.safe_load(stream))
+            api = data['API']
+            app = data['APP']
+        except yaml.YAMLError as exc:
+            print(exc)
+    p = input_parametr(app['base_accessibility'], app["base_type"],\
+                       app["base_participants"], app["base_price"])
     query = form_query(p)
     tmp_res = []
+    args = ((tmp, api['base_url']) for tmp in (query * 10))
+    net_results = set()
     with ThreadPoolExecutor() as executor:
-        net_results = set(executor.map(get_activity, query * 10))
+        net_results = set(executor.map(get_activity, args))
     for r in net_results:
         tmp = json.loads(r)
         tmp_res.append(tmp)
