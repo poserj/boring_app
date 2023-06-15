@@ -7,4 +7,3 @@ class ParametrActivity:
     type: str
     participants: int
     price: float
-
