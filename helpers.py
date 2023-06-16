@@ -1,4 +1,6 @@
+import json
 from difflib import SequenceMatcher
+from http import HTTPStatus
 from typing import List, Union
 
 import requests
@@ -12,8 +14,7 @@ def get_activity(args) -> str:
     response = requests.get(args[1] + args[0])
     if response.status_code == 200:
         return response.content
-    else:
-        raise 'Cant find web-page'
+
 
 def input_parametr(
     base_accessibility: float, base_type: str, base_participants: int, base_price: float
@@ -25,6 +26,7 @@ def input_parametr(
     price: float = float(input("price ") or base_price)
     return ParametrActivity(accessibility, type, participants, price)
 
+
 def form_query(p: ParametrActivity) -> tuple[str, str, str, str]:
     '''формируем параметры get-запроса'''
     return (
@@ -35,22 +37,38 @@ def form_query(p: ParametrActivity) -> tuple[str, str, str, str]:
     )
 
 
-def get_similar(*args) -> List[Union[float, dict]]:
+def get_similar(*args) -> dict:
     for a, b, c in args:
-        return [SequenceMatcher(None, a, b, autojunk=True).ratio(), c]
+        # return [SequenceMatcher(None, a, b, autojunk=True).ratio(), c]
+        return {
+            'matcher': SequenceMatcher(None, a, b, autojunk=True).ratio(),
+            'activity': c,
+        }
 
 
-def show_result(r: List[Union[float, dict]], max_row: int = 10) -> None:
+def show_result(r: dict, max_row: int = 10) -> None:
     r = r[0:max_row]
     for num, i in enumerate(r):
-        print(num + 1, i[1]['activity'])
+        print(num + 1, i['activity']['activity'])
 
 
 def app_init():
+    '''считываем конфиг из config.yaml'''
     with open("config.yaml", "r") as stream:
         try:
             data = yaml.safe_load(stream)
             return data
         except yaml.YAMLError as exc:
-            print(exc)
+            raise yaml.YAMLError
 
+
+def filter(dicts) -> list:
+    '''фильтрует ответы, содержащие ошибки'''
+    tmp = []
+    for d in dicts:
+        d = json.loads(d)
+        if d.get('error'):
+            continue
+        else:
+            tmp.append(d)
+    return tmp
