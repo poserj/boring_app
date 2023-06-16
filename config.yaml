@@ -4,6 +4,8 @@ APP:
     base_type: 'education'
     base_participants: 1
     base_price: 0.0
+    number_threads: 32
+    number_process: 2
 API:
     number_req: 20
     base_url: 'http://www.boredapi.com/api/activity/?'
